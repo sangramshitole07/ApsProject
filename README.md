@@ -264,10 +264,4 @@ active `landslide_dataset.csv` is not overwritten.
 - Add explainability methods such as permutation importance or SHAP.
 - Add model and data versioning.
 
-## Author
 
-**Satyam Kumar Yadav**
-B.Tech Computer Science Engineering
-Specialization: Artificial Intelligence and Machine Learning
-
-This project is intended for educational and academic purposes.
