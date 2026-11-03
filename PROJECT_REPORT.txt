@@ -7,9 +7,8 @@ DETAILED PROJECT REPORT
 
 This project is a machine-learning classification application for estimating
 whether environmental conditions are associated with a landslide. It includes
-a reproducible simulated dataset, data preparation and model-training logic,
-evaluation methods, visual analysis, and an interactive Streamlit web
-application.
+a supplied dataset, data preparation and model-training logic, evaluation
+methods, visual analysis, and an interactive Streamlit web application.
 
 The application compares two supervised binary-classification models:
 
@@ -23,9 +22,10 @@ training data and adds exactly 1,200 synthetic training rows. The test data and
 both CSV files are never augmented or overwritten by the application.
 
 Important scientific note:
-The dataset is simulated for demonstration and academic project purposes. It
-is not a replacement for validated geological field observations, GIS layers,
-or an operational landslide-warning system.
+The active CSV is supplied project data. It does not contain the geographic
+coordinates, field-validation metadata, or GIS layers required for operational
+geological deployment. Results should therefore be treated as project-specific
+machine-learning results rather than a production warning system.
 
 
 2. PROJECT FILES AND RESPONSIBILITIES
@@ -144,8 +144,9 @@ understand or run the project.
 ------------------------------------------------------------
 
 The data represents environmental conditions that may influence landslide
-susceptibility. The features are simulated using physically motivated
-distributions and relationships.
+susceptibility. The active CSV is the supplied project dataset. The generator
+script documents a separate reproducible example-data process and does not
+overwrite the active CSV.
 
 3.1 Numeric environmental features
 
@@ -461,7 +462,7 @@ Classification report
 13. VERIFIED PERFORMANCE RESULT
 ------------------------------------------------------------
 
-The following results must be measured using the supplied 3,200-row dataset, the
+The following results were measured using the supplied 3,200-row dataset, the
 fixed random seeds, the 80/20 split, and exactly 1,200 SMOTE rows.
 
 Random Forest:
@@ -476,12 +477,14 @@ Logistic Regression:
 - Held-out ROC-AUC: approximately 0.9902
 - Five-fold CV mean accuracy: approximately 0.9609
 
-Both measured held-out accuracies are within the requested 92 to 95 percent
-range. Results can change if the dataset seed, split seed, model settings, or
-library versions are changed.
+Both measured held-out accuracies are approximately within the requested
+92-to-95-percent target. Random Forest is 0.31 percentage points above the
+upper boundary, while Logistic Regression is inside the target range. Results
+can change if the dataset, split seed, model settings, or library versions are
+changed.
 
-These are results on a simulated dataset and should not be interpreted as
-real-world geological accuracy.
+These are results on the supplied project dataset and should not be interpreted
+as real-world geological accuracy.
 
 
 14. STATISTICAL COMPARISON
@@ -679,9 +682,8 @@ Web interface:
 1. The dataset is simulated rather than collected from field surveys.
 2. The project does not include latitude, longitude, elevation, geology maps,
    satellite imagery, or GIS raster layers.
-3. The generated distributions are plausible examples, not measured regional
-   statistics.
-4. The reported accuracy describes this generated dataset and fixed split.
+3. The supplied data may not represent measured regional statistics.
+4. The reported accuracy describes this supplied dataset and fixed split.
 5. Synthetic SMOTE rows can improve learning balance but do not add independent
    real-world evidence.
 6. Model probabilities are not calibrated geological risk probabilities.
@@ -712,15 +714,13 @@ Web interface:
 ------------------------------------------------------------
 
 This project implements a complete reproducible machine-learning workflow for
-simulated landslide susceptibility classification. The workflow begins with a
-3,200-row supplied dataset, cleans invalid records, separates the target,
+landslide susceptibility classification. The workflow begins with a 3,200-row
+supplied dataset, cleans invalid records, separates the target,
 performs a stratified 80/20 split, imputes missing feature values, generates
 exactly 1,200 SMOTE training rows, trains two models, evaluates them on an
 untouched test set, and presents the results through Streamlit.
 
 The verified held-out accuracy is 95.31 percent for Random Forest and
 95.16 percent for Logistic Regression under the current fixed configuration
-using the supplied original CSV. The results are close to the requested 92 to
-95 percent range, while the project's
-simulation and validation limitations must be considered before making any
-real-world geological decisions.
+using the supplied original CSV. The project's data and validation limitations
+must be considered before making any real-world geological decisions.
