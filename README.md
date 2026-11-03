@@ -1,109 +1,111 @@
-# 🌋 Landslide Susceptibility Classification
+# Landslide Susceptibility Classification
 
-A machine learning-based web application for **Landslide Susceptibility Classification** using **Random Forest and Logistic Regression**. The project analyzes environmental and soil-related factors and provides an interactive prediction through a **Streamlit web application**.
+A Streamlit machine-learning application that classifies environmental
+conditions as **landslide** or **no landslide** using Random Forest and
+Logistic Regression.
 
----
+The application uses `landslide_dataset.csv` as its source dataset. It creates
+exactly 1,200 SMOTE samples in memory for training only; synthetic rows are
+never added to the test set or written back to a CSV file.
 
+> **Important:** Model results are specific to this dataset and split. They
+> should not be interpreted as validated geological or field-deployment
+> performance.
 
----
+## Project Files
 
-## 📌 Project Overview
+| File | Purpose |
+|---|---|
+| `app.py` | Streamlit UI, preprocessing, SMOTE, model training, evaluation, and prediction |
+| `landslide_dataset.csv` | Active supplied dataset used by the application |
+| `landslide_datasetS.csv` | Separate dataset not used by the application |
+| `generate_landslide_dataset.py` | Creates a separate reproducible example dataset |
+| `requirements.txt` | Python dependencies |
+| `PROJECT_REPORT.txt` | Detailed technical project report |
+| `README.md` | Project documentation |
 
-Landslides are natural hazards influenced by several environmental and geological factors such as rainfall, slope, soil saturation, vegetation cover, earthquake activity, and proximity to water.
+## Dataset
 
-This project applies supervised machine learning algorithms to classify whether a given set of environmental conditions is associated with a **landslide or no landslide**.
+The active `landslide_dataset.csv` contains:
 
-The included dataset is a reproducible simulation based on plausible environmental
-relationships. It is intentionally noisy and overlapping so that statistical model
-comparison is meaningful. It must not be presented as a replacement for a validated
-geological field dataset.
+- 3,200 original observations
+- 9 input features
+- 1 target column
+- 2,193 class-0 observations (`No Landslide`)
+- 1,007 class-1 observations (`Landslide`)
+- 20 missing values in each feature column
+- No missing target values
 
-The project compares two machine learning algorithms:
-
-- 🌳 Random Forest
-- 📊 Logistic Regression
-
-The trained models are integrated into a **Streamlit application**, allowing users to enter environmental conditions and obtain a prediction interactively.
-
----
-
-## 🎯 Objectives
-
-- Analyze environmental factors associated with landslides.
-- Perform basic exploratory data analysis.
-- Preprocess the dataset for machine learning.
-- Handle infinite values, missing targets, duplicate rows, and missing features.
-- Add exactly 1,200 reproducible SMOTE samples to the training split only.
-- Train multiple classification algorithms.
-- Compare model performance using standard evaluation metrics.
-- Use stratified five-fold cross-validation to report mean accuracy and variation.
-- Estimate the accuracy difference with bootstrap confidence intervals.
-- Test the paired accuracy difference with a reproducible permutation test.
-- Visualize confusion matrices and ROC curves.
-- Analyze Random Forest feature importance.
-- Build an interactive Streamlit prediction application.
-
----
-
-## 📂 Dataset
-
-The application uses the supplied `landslide_dataset.csv` containing **3,200
-original observations** and the following features. The separate
-`landslide_datasetS.csv` file is not used.
+### Input Features
 
 | Feature | Description |
 |---|---|
 | `Rainfall_mm` | Rainfall measurement |
-| `Slope_Angle` | Slope angle of the area |
-| `Soil_Saturation` | Level of soil saturation |
+| `Slope_Angle` | Slope angle |
+| `Soil_Saturation` | Soil saturation level |
 | `Vegetation_Cover` | Vegetation coverage |
 | `Earthquake_Activity` | Earthquake activity level |
-| `Proximity_to_Water` | Proximity to nearby water sources |
-| `Landslide` | Target variable: 0 = No Landslide, 1 = Landslide |
-| `Soil_Type_Gravel` | One-hot encoded gravel soil type |
-| `Soil_Type_Sand` | One-hot encoded sand soil type |
-| `Soil_Type_Silt` | One-hot encoded silt soil type |
+| `Proximity_to_Water` | Proximity to water |
+| `Soil_Type_Gravel` | Gravel soil indicator |
+| `Soil_Type_Sand` | Sand soil indicator |
+| `Soil_Type_Silt` | Silt soil indicator |
 
-The generator creates correlated rainfall, slope, soil saturation, vegetation,
-earthquake, water-distance, and soil-type variables. Labels are generated from a
-nonlinear susceptibility score with modest random noise. Approximately 1% of each
-feature column is missing intentionally so the imputation pipeline is exercised.
-Generate a separate 2,000-row example dataset with:
+### Target
 
-```bash
-python generate_landslide_dataset.py
-```
+`Landslide` is the binary target:
 
-This creates `generated_landslide_dataset.csv` and does not overwrite the
-supplied `landslide_dataset.csv`.
+- `0`: No Landslide
+- `1`: Landslide
 
----
+## Preprocessing and Training Workflow
 
-## 🧠 Machine Learning Models
+1. Load only `landslide_dataset.csv`.
+2. Replace positive and negative infinity with missing values.
+3. Remove rows with missing targets.
+4. Remove duplicate rows.
+5. Convert `Landslide` to integer type.
+6. Split the data using a stratified 80/20 train/test split with
+   `random_state=42`.
+7. Impute missing feature values with the training median.
+8. Apply SMOTE only to training data.
+9. Train both models.
+10. Evaluate predictions on the untouched test set.
 
-### 1. Random Forest
+### Dataset Split
 
-A tree-based ensemble learning algorithm consisting of multiple decision trees.
+For the current 3,200-row dataset:
 
-Configuration:
+- Original training rows: 2,560
+- Held-out test rows: 640
+- Original training class 0: 1,754
+- Original training class 1: 806
+- SMOTE rows added: exactly 1,200
+- Effective training rows after SMOTE: 3,760
+
+SMOTE increases the minority class from 806 to 2,006 rows. It is inside the
+imbalanced-learn pipeline, so it is applied separately within each
+cross-validation training fold and does not leak validation data.
+
+## Models
+
+### Random Forest
 
 ```text
 n_estimators = 300
 max_depth = 8
 min_samples_leaf = 5
-max_features = sqrt
-class_weight = balanced
+max_features = "sqrt"
+class_weight = "balanced"
 random_state = 42
 ```
 
-Random Forest is also used to calculate feature importance.
+Pipeline:
 
-### 2. Logistic Regression
+```text
+Median imputation -> SMOTE -> Random Forest
+```
 
-A linear classification algorithm used as a baseline model.
-
-The features are scaled using `RobustScaler`, which uses medians and interquartile
-ranges and is less sensitive to extreme observations.
+### Logistic Regression
 
 ```text
 C = 0.3
@@ -111,257 +113,114 @@ max_iter = 1000
 random_state = 42
 ```
 
----
-
-## 🔄 Machine Learning Workflow
+Pipeline:
 
 ```text
-Dataset
-   ↓
-Data Loading
-   ↓
-Data Inspection
-   ↓
-Infinite Value, Missing Value & Duplicate Handling
-   ↓
-Exploratory Data Analysis
-   ↓
-Feature / Target Separation
-↓
-Train-Test Split
-↓
-Train-only SMOTE (+1,200 synthetic rows; 3,760 effective training rows)
-↓
-Model Training
-├── Random Forest
-└── Logistic Regression
-   ↓
-Model Evaluation
-   ├── Accuracy
-   ├── Precision
-   ├── Recall
-   ├── F1 Score
-   ├── ROC-AUC
-   ├── 5-fold CV Accuracy Mean
-   └── 5-fold CV Accuracy Std
-   ↓
-Visualization
-   ├── Confusion Matrix
-   ├── ROC Curve
-   └── Feature Importance
-   ↓
-Streamlit Application
-   ↓
-Landslide Prediction
+Median imputation -> SMOTE -> RobustScaler -> Logistic Regression
 ```
 
----
+## Verified Model Performance
 
-## 📊 Model Evaluation
+The following results were measured using the active dataset, `random_state=42`,
+the 80/20 split, and exactly 1,200 SMOTE rows:
 
-The models are evaluated using:
+| Model | Test Accuracy | Test ROC-AUC | Mean 5-Fold CV Accuracy |
+|---|---:|---:|---:|
+| Random Forest | 95.31% | 0.9895 | 95.23% |
+| Logistic Regression | 95.16% | 0.9902 | 96.09% |
 
-### Accuracy
+The application also reports:
 
-Measures the percentage of correctly classified observations.
-
-### Precision
-
-Measures how many predicted landslide cases were actually landslides.
-
-### Recall
-
-Measures how many actual landslide cases were correctly identified.
-
-### F1 Score
-
-The harmonic mean of precision and recall.
-
-### ROC-AUC
-
-Measures the model's ability to distinguish between the two classes across classification thresholds.
-
-### Statistical comparison
-
-Logistic Regression is treated as the baseline and Random Forest as the candidate improved model. Both models predict the same held-out test rows. The application reports:
-
-- The observed Random Forest minus Logistic Regression accuracy difference.
-- A 95% bootstrap confidence interval using 5,000 resamples.
-- A paired permutation-test p-value using 10,000 sign permutations.
-
-At the 5% significance level, an interval containing zero or a p-value of at least 0.05 means the observed improvement is not conclusive evidence of better population performance. Model accuracy intervals are also estimated with 5,000 bootstrap resamples.
-
-The supplied simulated dataset is designed to avoid perfect separability. Its
-performance difference is still an estimate for this generated population, not
-evidence about real geographic regions. For a real deployment, replace it with
-independently collected and georeferenced observations.
-
----
-
-## 📈 Streamlit Application Features
-
-The application provides several interactive sections.
-
-### 📊 Dashboard
-
-Displays:
-
-- Total number of samples
-- Number of features
-- Landslide samples
-- Non-landslide samples
-- Dataset preview
-- Target distribution
-- Correlation matrix
-
-### 🤖 Model Comparison
-
-Displays:
-
-- Accuracy
 - Precision
 - Recall
-- F1 Score
-- ROC-AUC
-- Five-fold cross-validation accuracy mean and standard deviation
+- F1 score
+- Cross-validation standard deviation
 - Classification reports
-- Model comparison chart
+- Confusion matrices
+- ROC curves
+- Random Forest feature importance
 
-### 📐 Statistical Evaluation
+## Statistical Evaluation
 
-Compares Random Forest with the Logistic Regression baseline using bootstrap sampling and a paired permutation hypothesis test on the shared test set.
+The application compares both models on the same held-out test rows.
 
-### 🔲 Confusion Matrices
+- Bootstrap confidence interval: 5,000 resamples
+- Paired permutation test: 10,000 sign permutations
+- Random seed: 42
 
-Interactive confusion matrices are available for:
+The statistical page reports the Random Forest minus Logistic Regression
+accuracy difference, a 95% bootstrap interval, and a paired permutation
+p-value.
 
-- Random Forest
-- Logistic Regression
+## Streamlit Pages
 
-### 📈 ROC Curves
+### Dashboard
 
-The application displays ROC curves for both models and their corresponding AUC values.
+Shows dataset size, feature count, class counts, train/test/SMOTE row counts,
+dataset preview, target distribution, correlation matrix, and data-quality
+information.
 
-### 🌳 Feature Importance
+### Model Comparison
 
-Random Forest feature importance is displayed as a table and bar chart.
+Shows metric tables, comparison charts, classification reports, and bootstrap
+accuracy intervals.
 
-### 🔮 Prediction
+### Statistical Evaluation
 
-Users can enter:
+Shows the paired model comparison, confidence interval, and permutation-test
+result.
 
-- Rainfall
-- Slope angle
-- Soil saturation
-- Vegetation cover
-- Earthquake activity
-- Proximity to water
-- Soil type
+### Confusion Matrices
 
-The selected model then predicts:
+Displays the confusion matrix for either model.
 
-```text
-LANDSLIDE
-```
+### ROC Curves
 
-or
+Displays both model ROC curves and AUC values.
 
-```text
-NO LANDSLIDE
-```
+### Feature Importance
 
-along with the estimated landslide probability.
+Displays Random Forest feature importance as a table and chart.
 
----
+### Predict Susceptibility
 
-## 🛠️ Technologies Used
+Accepts rainfall, slope, soil saturation, vegetation, earthquake activity,
+water proximity, and soil type, then returns:
 
-### Programming Language
+- Predicted class
+- Landslide probability
+- Illustrative Low, Moderate, or High susceptibility level
 
-- Python
+The probability categories are illustrative and are not official geological
+hazard ratings.
 
-### Machine Learning
+### Dataset
 
-- Scikit-learn
+Displays shape, column types, missing values, unique values, IQR outlier
+counts, descriptive statistics, duplicate count, and the full active dataset.
 
-### Data Processing
-
-- Pandas
-- NumPy
-
-### Visualization
-
-- Matplotlib
-- Seaborn
-
-### Web Application
-
-- Streamlit
-
-### Development Tools
-
-- Jupyter Notebook
-- VS Code
-- Git
-- GitHub
-
----
-
-## 📁 Project Structure
-
-```text
-landslide-susceptibility-classification/
-│
-├── app.py
-├── landslide_dataset.csv
-├── requirements.txt
-├── README.md
-│
-└── screenshots/
-    ├── dashboard.png
-    ├── model-comparison.png
-    ├── confusion-matrix.png
-    └── prediction.png
-```
-
----
-
-## ⚙️ Installation
+## Installation
 
 Clone the repository:
 
 ```bash
-git clone 
-
-Navigate into the project directory:
-
-```bash
-cd landslide-susceptibility-classification
+git clone https://github.com/sangramshitole07/ApsProject.git
+cd ApsProject
 ```
 
-Install the required dependencies:
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
----
-
-## ▶️ Run the Streamlit Application
-
-Run:
+Run the application:
 
 ```bash
 streamlit run app.py
 ```
 
-The application will open in your browser.
-
----
-
-## 📦 Requirements
-
-The main dependencies are:
+## Dependencies
 
 ```text
 streamlit
@@ -370,106 +229,45 @@ numpy
 matplotlib
 seaborn
 scikit-learn
+imbalanced-learn
 ```
 
----
+## Reproducible Example Dataset
 
-## ☁️ Deployment
+`generate_landslide_dataset.py` creates a separate 2,000-row example dataset
+using seed `2026`:
 
-This application can be deployed using **Streamlit Community Cloud**.
-
-### Steps
-
-1. Push the project to GitHub.
-2. Open Streamlit Community Cloud.
-3. Connect your GitHub account.
-4. Select the repository.
-5. Select `app.py` as the main file.
-6. Deploy the application.
-
-Make sure `requirements.txt` is present in the repository.
-
----
-
-## 📌 Example Prediction
-
-The user provides environmental conditions such as:
-
-```text
-Rainfall          → 100 mm
-Slope Angle       → 30°
-Soil Saturation   → 0.50
-Vegetation Cover  → 0.50
-Earthquake Activity → 0.20
-Proximity to Water  → 0.50
-Soil Type         → Sand
+```bash
+python generate_landslide_dataset.py
 ```
 
-The selected machine learning model processes these features and returns a predicted class and probability.
+The generated file is named `generated_landslide_dataset.csv`; the supplied
+active `landslide_dataset.csv` is not overwritten.
 
----
+## Limitations
 
-## ⚠️ Limitations
+- The dataset does not include coordinates, GIS raster layers, elevation, or
+  validated geological measurements.
+- SMOTE creates synthetic training observations; it does not add independent
+  field evidence.
+- A random split may overestimate geographic generalization.
+- Model probabilities are not calibrated geological risk probabilities.
+- Real deployment requires independent spatial validation and monitoring.
 
-- The dataset does not contain geographical coordinates or GIS raster layers.
-- The application is intended as a machine learning classification demonstration.
-- The dataset may not represent real-world geological conditions.
-- The probability-based Low/Moderate/High susceptibility labels used in the application are illustrative.
-- The supplied 3,200-row dataset is used as the original data. SMOTE rows are
-  generated only in memory during training and should not be treated as
-  independent field observations.
-- Real-world landslide susceptibility mapping requires validated geological, geographical, climatic, and spatial data.
+## Future Improvements
 
----
+- Add validated georeferenced observations.
+- Add elevation, lithology, drainage, land cover, and fault-distance features.
+- Use spatial or region-based validation.
+- Tune hyperparameters with nested cross-validation.
+- Calibrate probabilities.
+- Add explainability methods such as permutation importance or SHAP.
+- Add model and data versioning.
 
-## 🔮 Future Scope
-
-Possible improvements include:
-
-- Hyperparameter tuning
-- Cross-validation
-- Larger real-world datasets
-- GIS integration
-- Geographic coordinates and elevation data
-- Digital Elevation Models (DEM)
-- Rainfall time-series data
-- Soil and geological maps
-- Explainable AI techniques
-- Real-time environmental data
-- Interactive susceptibility maps
-- Advanced models such as XGBoost and neural networks
-
----
-
-## 👨‍💻 Author
+## Author
 
 **Satyam Kumar Yadav**
-
-B.Tech Computer Science Engineering  
-Specialization: Artificial Intelligence & Machine Learning
-
-### GitHub
-
-`https://github.com/SatyamYadav26`
-
----
-
-## ⭐ Project Highlights
-
-```text
-🌋 Landslide Classification
-🤖 3 Machine Learning Models
-📊 Model Performance Analysis
-📈 ROC Curve Analysis
-🔲 Confusion Matrix Visualization
-🌳 Feature Importance
-🔮 Interactive Prediction
-🚀 Streamlit Web Application
-☁️ Deployment Ready
-```
-
----
-
-## 📄 License
+B.Tech Computer Science Engineering
+Specialization: Artificial Intelligence and Machine Learning
 
 This project is intended for educational and academic purposes.
