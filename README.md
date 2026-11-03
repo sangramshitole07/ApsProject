@@ -1,6 +1,6 @@
 # 🌋 Landslide Susceptibility Classification
 
-A machine learning-based web application for **Landslide Susceptibility Classification** using **Random Forest, Logistic Regression, and Support Vector Machine (SVM)**. The project analyzes environmental and soil-related factors and provides an interactive prediction through a **Streamlit web application**.
+A machine learning-based web application for **Landslide Susceptibility Classification** using **Random Forest and Logistic Regression**. The project analyzes environmental and soil-related factors and provides an interactive prediction through a **Streamlit web application**.
 
 ---
 
@@ -13,11 +13,15 @@ Landslides are natural hazards influenced by several environmental and geologica
 
 This project applies supervised machine learning algorithms to classify whether a given set of environmental conditions is associated with a **landslide or no landslide**.
 
-The project compares three machine learning algorithms:
+The included dataset is a reproducible simulation based on plausible environmental
+relationships. It is intentionally noisy and overlapping so that statistical model
+comparison is meaningful. It must not be presented as a replacement for a validated
+geological field dataset.
+
+The project compares two machine learning algorithms:
 
 - 🌳 Random Forest
 - 📊 Logistic Regression
-- ⚡ Support Vector Machine (SVM)
 
 The trained models are integrated into a **Streamlit application**, allowing users to enter environmental conditions and obtain a prediction interactively.
 
@@ -28,8 +32,13 @@ The trained models are integrated into a **Streamlit application**, allowing use
 - Analyze environmental factors associated with landslides.
 - Perform basic exploratory data analysis.
 - Preprocess the dataset for machine learning.
+- Handle infinite values, missing targets, duplicate rows, and missing features.
+- Add exactly 1,200 reproducible SMOTE samples to the training split only.
 - Train multiple classification algorithms.
 - Compare model performance using standard evaluation metrics.
+- Use stratified five-fold cross-validation to report mean accuracy and variation.
+- Estimate the accuracy difference with bootstrap confidence intervals.
+- Test the paired accuracy difference with a reproducible permutation test.
 - Visualize confusion matrices and ROC curves.
 - Analyze Random Forest feature importance.
 - Build an interactive Streamlit prediction application.
@@ -38,7 +47,9 @@ The trained models are integrated into a **Streamlit application**, allowing use
 
 ## 📂 Dataset
 
-The dataset contains **2,000 observations** and the following features:
+The application uses the supplied `landslide_dataset.csv` containing **3,200
+original observations** and the following features. The separate
+`landslide_datasetS.csv` file is not used.
 
 | Feature | Description |
 |---|---|
@@ -53,6 +64,19 @@ The dataset contains **2,000 observations** and the following features:
 | `Soil_Type_Sand` | One-hot encoded sand soil type |
 | `Soil_Type_Silt` | One-hot encoded silt soil type |
 
+The generator creates correlated rainfall, slope, soil saturation, vegetation,
+earthquake, water-distance, and soil-type variables. Labels are generated from a
+nonlinear susceptibility score with modest random noise. Approximately 1% of each
+feature column is missing intentionally so the imputation pipeline is exercised.
+Generate a separate 2,000-row example dataset with:
+
+```bash
+python generate_landslide_dataset.py
+```
+
+This creates `generated_landslide_dataset.csv` and does not overwrite the
+supplied `landslide_dataset.csv`.
+
 ---
 
 ## 🧠 Machine Learning Models
@@ -64,7 +88,10 @@ A tree-based ensemble learning algorithm consisting of multiple decision trees.
 Configuration:
 
 ```text
-n_estimators = 200
+n_estimators = 300
+max_depth = 8
+min_samples_leaf = 5
+max_features = sqrt
 class_weight = balanced
 random_state = 42
 ```
@@ -75,28 +102,14 @@ Random Forest is also used to calculate feature importance.
 
 A linear classification algorithm used as a baseline model.
 
-The features are standardized using `StandardScaler`.
+The features are scaled using `RobustScaler`, which uses medians and interquartile
+ranges and is less sensitive to extreme observations.
 
 ```text
+C = 0.3
 max_iter = 1000
 random_state = 42
 ```
-
-### 3. Support Vector Machine
-
-An SVM with an RBF kernel is used for classification.
-
-Configuration:
-
-```text
-kernel = rbf
-C = 1
-gamma = scale
-probability = True
-random_state = 42
-```
-
-Feature scaling is performed using `StandardScaler`.
 
 ---
 
@@ -109,25 +122,28 @@ Data Loading
    ↓
 Data Inspection
    ↓
-Missing Value & Duplicate Check
+Infinite Value, Missing Value & Duplicate Handling
    ↓
 Exploratory Data Analysis
    ↓
 Feature / Target Separation
-   ↓
+↓
 Train-Test Split
-   ↓
+↓
+Train-only SMOTE (+1,200 synthetic rows; 3,760 effective training rows)
+↓
 Model Training
-   ├── Random Forest
-   ├── Logistic Regression
-   └── SVM
+├── Random Forest
+└── Logistic Regression
    ↓
 Model Evaluation
    ├── Accuracy
    ├── Precision
    ├── Recall
    ├── F1 Score
-   └── ROC-AUC
+   ├── ROC-AUC
+   ├── 5-fold CV Accuracy Mean
+   └── 5-fold CV Accuracy Std
    ↓
 Visualization
    ├── Confusion Matrix
@@ -165,6 +181,21 @@ The harmonic mean of precision and recall.
 
 Measures the model's ability to distinguish between the two classes across classification thresholds.
 
+### Statistical comparison
+
+Logistic Regression is treated as the baseline and Random Forest as the candidate improved model. Both models predict the same held-out test rows. The application reports:
+
+- The observed Random Forest minus Logistic Regression accuracy difference.
+- A 95% bootstrap confidence interval using 5,000 resamples.
+- A paired permutation-test p-value using 10,000 sign permutations.
+
+At the 5% significance level, an interval containing zero or a p-value of at least 0.05 means the observed improvement is not conclusive evidence of better population performance. Model accuracy intervals are also estimated with 5,000 bootstrap resamples.
+
+The supplied simulated dataset is designed to avoid perfect separability. Its
+performance difference is still an estimate for this generated population, not
+evidence about real geographic regions. For a real deployment, replace it with
+independently collected and georeferenced observations.
+
 ---
 
 ## 📈 Streamlit Application Features
@@ -192,8 +223,13 @@ Displays:
 - Recall
 - F1 Score
 - ROC-AUC
+- Five-fold cross-validation accuracy mean and standard deviation
 - Classification reports
 - Model comparison chart
+
+### 📐 Statistical Evaluation
+
+Compares Random Forest with the Logistic Regression baseline using bootstrap sampling and a paired permutation hypothesis test on the shared test set.
 
 ### 🔲 Confusion Matrices
 
@@ -201,11 +237,10 @@ Interactive confusion matrices are available for:
 
 - Random Forest
 - Logistic Regression
-- SVM
 
 ### 📈 ROC Curves
 
-The application displays ROC curves for all three models and their corresponding AUC values.
+The application displays ROC curves for both models and their corresponding AUC values.
 
 ### 🌳 Feature Importance
 
@@ -296,8 +331,7 @@ landslide-susceptibility-classification/
 Clone the repository:
 
 ```bash
-git clone https://github.com/SatyamYadav26/landslide-susceptibility-classification.git
-```
+git clone 
 
 Navigate into the project directory:
 
@@ -381,6 +415,9 @@ The selected machine learning model processes these features and returns a predi
 - The application is intended as a machine learning classification demonstration.
 - The dataset may not represent real-world geological conditions.
 - The probability-based Low/Moderate/High susceptibility labels used in the application are illustrative.
+- The supplied 3,200-row dataset is used as the original data. SMOTE rows are
+  generated only in memory during training and should not be treated as
+  independent field observations.
 - Real-world landslide susceptibility mapping requires validated geological, geographical, climatic, and spatial data.
 
 ---
